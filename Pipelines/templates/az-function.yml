@@ -1,0 +1,40 @@
+parameters:
+  env: ''
+  tenantid: ''
+  applicationid: ''
+  spclientsecret: ''
+  subscriptionid: ''       
+        
+jobs:
+- deployment: Deploy
+  environment: TerraformDeployment_${{ parameters.env }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+          - task: UsePythonVersion@0
+            displayName: Set Python version
+            inputs:
+              versionSpec: 3.7
+              architecture: x64
+
+          - script: pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
+            workingDirectory: '$(Pipeline.Workspace)/Functions'
+            displayName: Install dependencies
+
+          - task: ArchiveFiles@2
+            displayName: Create build zip
+            inputs:
+              rootFolderOrFile: '$(Pipeline.Workspace)/Functions'
+              includeRootFolder: false
+              archiveFile: $(Pipeline.Workspace)/build/build-$(Build.BuildId).zip
+              
+          - script: |
+              ls
+              cd $(Pipeline.Workspace)/Functions
+              ls
+              az login --service-principal -u ${{ parameters.applicationid }} -p ${{ parameters.spclientsecret }} --tenant ${{ parameters.tenantid }}
+              az account set --subscription ${{ parameters.subscriptionid }}
+              echo functionapp deployment source config-zip -g odm-devops-${{ parameters.env}}-rg -n odm-devops-${{ parameters.env }}-func-app --src $(Pipeline.Workspace)/build/build-$(Build.BuildId).zip
+              az functionapp deployment source config-zip -g odm-devops-${{ parameters.env}}-rg -n odm-devops-${{ parameters.env }}-func-app --src $(Pipeline.Workspace)/build/build-$(Build.BuildId).zip
+            displayName: Deploy to Azure

@@ -1,0 +1,78 @@
+
+variables:
+- group: adp-secrets
+- name: StorageContainer
+  value: backend
+- name: StorageAccessKey
+  value: xxxx
+- name: ProjectName
+  value: AutomatedDataPlatform
+- name: TerraformRG
+  value: adp-environment-rg
+- name: TerraformSA
+  value: adp$(ENV)tfsa # Name of the storage account created in common pipeline
+- name: SubscriptionId
+  value: $(SUBSCRIPTION_ID)
+- name: SPApplicationId
+  value: $(AZ-CLIENT-ID)
+- name: SPObjectId
+  value: $(AZ-OBJECT-ID)
+- name: SPClientSecret
+  value: $(AZ-CLIENT-SECRET)
+- name: TenantId
+  value: $(AZ-TENANT-ID)
+
+
+stages:
+
+- stage: get_tf_files
+  jobs:
+  - job: publish_tf_files  
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+    - task: CopyFiles@2
+      displayName: 'Copy environment files to: build'
+      inputs:
+        SourceFolder: OuluDevMeetup/Environment
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/terraform'
+    - publish: '$(Build.ArtifactStagingDirectory)/terraform'
+      artifact: Terraform
+    - task: CopyFiles@2
+      displayName: 'Copy python function to: python'
+      inputs:
+        SourceFolder: OuluDevMeetup/Functions
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/Functions'
+    - publish: '$(Build.ArtifactStagingDirectory)/Functions'
+      artifact: Functions
+
+- stage: build_dev_environment
+  condition: succeeded('get_tf_files')
+  jobs:
+  - template: ./templates/terraform.yml
+    parameters:
+      env: 'dev'
+      subscription: '$(ProjectName)'
+      terraformsa: 'adptfsa'
+      terraformrg: '$(TerraformRG)'
+      storagecontainer: 'dev'
+      terraformurl: '$(TERRAFORM_URL)'
+      spobjectid: '$(SPObjectId)'
+      tenantid: '$(TenantId)'
+      applicationid: '$(SPApplicationId)'
+      spclientsecret: '$(SPClientSecret)'
+      subscriptionid: '$(SubscriptionId)'
+
+- stage: deploy_python_function
+  dependsOn: build_dev_environment
+  condition: succeeded('build_dev_environment')
+  jobs:
+  - template: ./templates/az-function.yml
+    parameters:
+      env: 'dev'
+      tenantid: '$(TenantId)'
+      applicationid: '$(SPApplicationId)'
+      spclientsecret: '$(SPClientSecret)'
+      subscriptionid: '$(SubscriptionId)'
+
+

@@ -1,0 +1,76 @@
+
+variables:
+- group: adp-secrets
+- name: StorageContainer
+  value: backend
+- name: StorageAccessKey
+  value: xxxx
+- name: ProjectName
+  value: AutomatedDataPlatform
+- name: TerraformRG
+  value: adp-environment-rg
+- name: TerraformSA
+  value: adp$(ENV)tfsa # Name of the storage account created in common pipeline
+- name: SubscriptionId
+  value: $(SUBSCRIPTION_ID)
+- name: SPApplicationId
+  value: $(AZ-CLIENT-ID)
+- name: SPObjectId
+  value: $(AZ-OBJECT-ID)
+- name: SPClientSecret
+  value: $(AZ-CLIENT-SECRET)
+- name: TenantId
+  value: $(AZ-TENANT-ID)
+
+
+stages:
+
+- stage: get_tf_files
+  jobs:
+  - job: publish_tf_files  
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+    - task: CopyFiles@2
+      displayName: 'Copy Files to: build'
+      inputs:
+        SourceFolder: OuluDevMeetup/Environment
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/terraform'
+    - publish: '$(Build.ArtifactStagingDirectory)/terraform'
+      artifact: Terraform
+
+- stage: build_test_environment
+  condition: succeeded('get_tf_files')
+  jobs:
+  - template: ./templates/terraform.yml
+    parameters:
+      env: 'test'
+      subscription: '$(ProjectName)'
+      terraformsa: 'adptfsa'
+      terraformrg: '$(TerraformRG)'
+      storagecontainer: 'test'
+      terraformurl: '$(TERRAFORM_URL)'
+      spobjectid: '$(SPObjectId)'
+      tenantid: '$(TenantId)'
+      applicationid: '$(SPApplicationId)'
+      spclientsecret: '$(SPClientSecret)'
+      subscriptionid: '$(SubscriptionId)'
+
+- stage: build_prod_environment
+  condition: succeeded('build_test_environment')
+  jobs:
+  - template: ./templates/terraform.yml
+    parameters:
+      env: 'prod'
+      subscription: '$(ProjectName)'
+      terraformsa: 'adptfsa'
+      terraformrg: '$(TerraformRG)'
+      storagecontainer: 'prod'
+      terraformurl: '$(TERRAFORM_URL)'
+      spobjectid: '$(SPObjectId)'
+      tenantid: '$(TenantId)'
+      applicationid: '$(SPApplicationId)'
+      spclientsecret: '$(SPClientSecret)'
+      subscriptionid: '$(SubscriptionId)'
+    
+
