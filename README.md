@@ -1,3 +1,3 @@
-# DevOpsTerraform
+# Terraform with Azure DevOps
 
-Ja moi
+Instructions to be updated soon...
