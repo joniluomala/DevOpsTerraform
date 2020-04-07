@@ -1,22 +1,12 @@
 
 variables:
 - group: adp-secrets
-- name: StorageContainer
-  value: backend
 - name: StorageAccessKey
   value: xxxx
-- name: ProjectName
-  value: AutomatedDataPlatform
-- name: TerraformRG
-  value: adp-environment-rg
-- name: TerraformSA
-  value: adp$(ENV)tfsa # Name of the storage account created in common pipeline
 - name: SubscriptionId
   value: $(SUBSCRIPTION_ID)
 - name: SPApplicationId
   value: $(AZ-CLIENT-ID)
-- name: SPObjectId
-  value: $(AZ-OBJECT-ID)
 - name: SPClientSecret
   value: $(AZ-CLIENT-SECRET)
 - name: TenantId
@@ -52,12 +42,11 @@ stages:
   - template: ./templates/terraform.yml
     parameters:
       env: 'dev'
-      subscription: '$(ProjectName)'
+      subscription: 'AutomatedDataPlatform'
       terraformsa: 'adptfsa'
-      terraformrg: '$(TerraformRG)'
+      terraformrg: 'adp-environment-rg'
       storagecontainer: 'dev'
       terraformurl: '$(TERRAFORM_URL)'
-      spobjectid: '$(SPObjectId)'
       tenantid: '$(TenantId)'
       applicationid: '$(SPApplicationId)'
       spclientsecret: '$(SPClientSecret)'
